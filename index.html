@@ -224,6 +224,20 @@
   #chart-svg{width:100%; height:auto; display:block;}
   .chart-empty{color:var(--chalk-dim); font-size:13px; text-align:center; padding:40px 0;}
 
+  .rep-tabs{
+    display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px;
+  }
+  .rep-tab{
+    font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.5px;
+    padding:6px 12px; border-radius:16px; border:1px solid var(--line);
+    background:var(--bg); color:var(--chalk-dim); cursor:pointer;
+    transition:all 0.15s ease;
+  }
+  .rep-tab.active{
+    background:var(--rust); color:#fff; border-color:var(--rust); font-weight:700;
+  }
+  .rep-tab:hover:not(.active){border-color:var(--rust); color:var(--rust);}
+
   /* ===== PERCENTAGE BAR ===== */
   .pct-card{
     background:var(--bg-card); border:1px solid var(--line); border-radius:14px;
@@ -480,6 +494,7 @@ let unit = "lb"; // 'lb' or 'kg'
 let movements = [];
 let records = []; // {id, movement, weightLb, sets, reps, date}
 let activeMovement = null;
+let activeRep = null; // número de reps seleccionado para filtrar la gráfica
 
 function uid(){ return 'r' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
 
@@ -618,6 +633,7 @@ function renderTabs(){
   container.querySelectorAll('.tab').forEach(btn => {
     btn.addEventListener('click', () => {
       activeMovement = btn.dataset.movement;
+      activeRep = null;
       document.getElementById('in-movement').value = activeMovement;
       renderTabs();
       renderContent();
@@ -681,9 +697,20 @@ function renderContent(){
     return;
   }
 
-  // CHART
+  // CHART — con selector de repeticiones
+  const availableReps = [...new Set(recs.map(r => r.reps))].sort((a,b) => a-b);
+  if(!activeRep || !availableReps.includes(activeRep)){
+    activeRep = availableReps[0];
+  }
+  const recsForChart = recs.filter(r => r.reps === activeRep);
+
   html += `<div class="chart-card">
-    <div class="card-title">Progreso histórico</div>
+    <div class="card-title">Progreso histórico — ${activeRep} rep${activeRep>1?'s':''}</div>
+    <div class="rep-tabs">`;
+  availableReps.forEach(rp => {
+    html += `<button class="rep-tab ${rp===activeRep?'active':''}" data-rep="${rp}">${rp} rep${rp>1?'s':''}</button>`;
+  });
+  html += `</div>
     <div id="chart-container"></div>
   </div>`;
 
@@ -725,7 +752,15 @@ function renderContent(){
   area.innerHTML = html;
 
   // render chart via SVG
-  renderChart(recs);
+  renderChart(recsForChart);
+
+  // bind rep selector tabs
+  area.querySelectorAll('.rep-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeRep = parseInt(btn.dataset.rep);
+      renderContent();
+    });
+  });
 
   // bind delete buttons
   area.querySelectorAll('.del-btn').forEach(btn => {
@@ -748,7 +783,7 @@ function formatDate(dateStr){
 function renderChart(recs){
   const container = document.getElementById('chart-container');
   if(recs.length < 2){
-    container.innerHTML = `<div class="chart-empty">Agrega al menos 2 registros para ver la gráfica de progreso.</div>`;
+    container.innerHTML = `<div class="chart-empty">Agrega al menos 2 registros con ${activeRep} rep${activeRep>1?'s':''} para ver la gráfica de progreso.</div>`;
     return;
   }
 
@@ -942,6 +977,7 @@ async function init(){
 
   document.getElementById('in-movement').addEventListener('change', (e) => {
     activeMovement = e.target.value;
+    activeRep = null;
     renderTabs();
     renderContent();
   });
@@ -957,6 +993,7 @@ async function init(){
     movements.push(name);
     await saveMovements();
     activeMovement = name;
+    activeRep = null;
     input.value = '';
     populateMovementSelect();
     renderTabs();
