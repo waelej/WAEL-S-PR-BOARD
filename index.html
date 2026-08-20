@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR Board</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root{
+    --bg:#F5F3EE;
+    --bg-raised:#FFFFFF;
+    --bg-card:#FFFFFF;
+    --line:#E0DCD3;
+    --chalk:#1E1D1B;
+    --chalk-dim:#75726A;
+    --rust:#F2551C;
+    --rust-dim:#C4400F;
+    --mustard:#A8BE1E;
+    --mustard-dim:#7D8E16;
+    --green:#3FA34D;
+    --flouro:#D4F237;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+
+  body{
+    background:var(--bg);
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(242,85,28,0.05), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(212,242,55,0.15), transparent 40%);
+    color:var(--chalk);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    padding-bottom:60px;
+  }
+
+  .display{font-family:'Oswald', sans-serif; text-transform:uppercase;}
+  .mono{font-family:'JetBrains Mono', monospace;}
+
+  /* ===== HEADER ===== */
+  header{
+    padding:28px 20px 20px;
+    border-bottom:3px solid var(--line);
+    position:relative;
+  }
+  .header-inner{
+    max-width:960px; margin:0 auto;
+    display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px;
+  }
+  .title-block .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px; letter-spacing:3px; color:var(--rust);
+    text-transform:uppercase; margin-bottom:6px; display:block;
+  }
+  h1{
+    font-family:'Oswald', sans-serif;
+    font-size:42px; font-weight:700; letter-spacing:1px;
+    text-transform:uppercase; line-height:0.95;
+  }
+  h1 span{color:var(--mustard);}
+  .athlete-name{
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px; letter-spacing:2px; text-transform:uppercase;
+    color:var(--chalk-dim); margin-top:8px;
+  }
+  .athlete-name::before{
+    content:'// '; color:var(--rust);
+  }
+
+  .unit-toggle{
+    display:flex; align-items:center; gap:0;
+    border:2px solid var(--line); border-radius:8px; overflow:hidden;
+    background:var(--bg-raised);
+  }
+  .unit-toggle button{
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700; font-size:14px; letter-spacing:1px;
+    padding:10px 20px; background:transparent; border:none; color:var(--chalk-dim);
+    cursor:pointer; transition:all 0.15s ease;
+  }
+  .unit-toggle button.active{
+    background:var(--rust); color:#fff;
+  }
+
+  main{max-width:960px; margin:0 auto; padding:28px 20px;}
+
+  /* ===== ADD FORM ===== */
+  .add-panel{
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:22px;
+    margin-bottom:32px;
+  }
+  .add-panel-header{
+    display:flex; align-items:center; gap:10px; margin-bottom:18px;
+  }
+  .add-panel-header .bar{width:4px; height:20px; background:var(--rust); border-radius:2px;}
+  .add-panel-header h2{
+    font-family:'Oswald', sans-serif; font-size:15px; letter-spacing:2px;
+    text-transform:uppercase; color:var(--chalk-dim); font-weight:600;
+  }
+
+  .form-grid{
+    display:grid;
+    grid-template-columns:1.4fr 1fr 0.8fr 0.8fr 1fr auto;
+    gap:12px;
+    align-items:end;
+  }
+  @media (max-width:800px){
+    .form-grid{grid-template-columns:1fr 1fr;}
+  }
+
+  .field label{
+    display:block; font-family:'JetBrains Mono', monospace;
+    font-size:10px; letter-spacing:1.5px; text-transform:uppercase;
+    color:var(--chalk-dim); margin-bottom:6px;
+  }
+  .field input, .field select{
+    width:100%; background:var(--bg); border:1px solid var(--line);
+    color:var(--chalk); padding:10px 12px; border-radius:6px;
+    font-family:'Inter', sans-serif; font-size:14px;
+  }
+  .field input:focus, .field select:focus{
+    outline:none; border-color:var(--rust);
+  }
+  .field input::-webkit-calendar-picker-indicator{filter:invert(0.8);}
+
+  .btn-add{
+    background:var(--rust); color:#fff; border:none;
+    padding:11px 22px; border-radius:6px; cursor:pointer;
+    font-family:'Oswald', sans-serif; font-weight:600; font-size:14px;
+    letter-spacing:1px; text-transform:uppercase;
+    transition:background 0.15s ease;
+    white-space:nowrap;
+  }
+  .btn-add:hover{background:#A8371F;}
+
+  .new-movement-row{
+    margin-top:14px; display:flex; gap:10px; align-items:center;
+  }
+  .new-movement-row input{
+    flex:1; max-width:280px;
+  }
+  .btn-ghost{
+    background:transparent; border:1px dashed var(--line); color:var(--chalk-dim);
+    padding:9px 16px; border-radius:6px; cursor:pointer; font-size:13px;
+    font-family:'Inter', sans-serif;
+  }
+  .btn-ghost:hover{border-color:var(--mustard); color:var(--mustard);}
+
+  /* ===== MOVEMENT SELECTOR TABS ===== */
+  .tabs{
+    display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px;
+  }
+  .tab{
+    font-family:'JetBrains Mono', monospace; font-size:12px; letter-spacing:0.5px;
+    padding:8px 14px; border-radius:20px; border:1px solid var(--line);
+    background:var(--bg-raised); color:var(--chalk-dim); cursor:pointer;
+    transition:all 0.15s ease;
+  }
+  .tab.active{
+    background:var(--chalk); color:var(--bg); border-color:var(--chalk); font-weight:700;
+  }
+  .tab:hover:not(.active){border-color:var(--chalk-dim); color:var(--chalk);}
+
+  /* ===== EMPTY STATE ===== */
+  .empty-state{
+    text-align:center; padding:60px 20px; color:var(--chalk-dim);
+  }
+  .empty-state .big{font-family:'Oswald', sans-serif; font-size:20px; color:var(--chalk); margin-bottom:8px; text-transform:uppercase;}
+
+  /* ===== PR HERO CARD ===== */
+  .pr-hero{
+    background:linear-gradient(135deg, var(--bg-card) 0%, var(--bg-raised) 100%);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:28px;
+    margin-bottom:20px;
+    position:relative;
+    overflow:hidden;
+  }
+  .pr-hero::before{
+    content:'';
+    position:absolute; top:-40px; right:-40px;
+    width:180px; height:180px; border-radius:50%;
+    background:radial-gradient(circle, rgba(242,85,28,0.08), transparent 70%);
+  }
+  .pr-hero-top{
+    display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;
+  }
+  .pr-movement-name{
+    font-family:'Oswald', sans-serif; font-size:22px; font-weight:600;
+    text-transform:uppercase; letter-spacing:0.5px;
+  }
+  .pr-date-badge{
+    font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--chalk-dim);
+    background:var(--bg); padding:4px 10px; border-radius:20px; border:1px solid var(--line);
+  }
+  .pr-value-row{
+    display:flex; align-items:baseline; gap:14px; margin:14px 0 4px;
+    position:relative; z-index:1;
+  }
+  .pr-value{
+    font-family:'Oswald', sans-serif; font-size:64px; font-weight:700;
+    color:var(--mustard); line-height:1;
+  }
+  .pr-unit{font-family:'JetBrains Mono', monospace; font-size:20px; color:var(--chalk-dim);}
+  .pr-meta{
+    font-family:'JetBrains Mono', monospace; font-size:13px; color:var(--chalk-dim);
+    display:flex; gap:16px; flex-wrap:wrap;
+  }
+
+  /* ===== CHART ===== */
+  .chart-card{
+    background:var(--bg-card); border:1px solid var(--line); border-radius:14px;
+    padding:24px; margin-bottom:20px;
+  }
+  .card-title{
+    font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:2px;
+    text-transform:uppercase; color:var(--chalk-dim); margin-bottom:16px;
+  }
+  #chart-svg{width:100%; height:auto; display:block;}
+  .chart-empty{color:var(--chalk-dim); font-size:13px; text-align:center; padding:40px 0;}
+
+  /* ===== PERCENTAGE BAR ===== */
+  .pct-card{
+    background:var(--bg-card); border:1px solid var(--line); border-radius:14px;
+    padding:24px; margin-bottom:20px;
+  }
+  .pct-grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:10px;
+  }
+  .pct-plate{
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    padding:14px 12px; text-align:center; position:relative;
+    transition:transform 0.15s ease, border-color 0.15s ease;
+  }
+  .pct-plate:hover{border-color:var(--mustard); transform:translateY(-2px);}
+  .pct-plate.pct-100{
+    border-color:var(--rust); background:linear-gradient(180deg, #FFFFFF, rgba(212,242,55,0.35) 70%, var(--flouro));
+  }
+  .pct-plate .pct-label{
+    font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--chalk-dim);
+    letter-spacing:1px; margin-bottom:6px;
+  }
+  .pct-plate.pct-100 .pct-label{color:var(--rust);}
+  .pct-plate .pct-weight{
+    font-family:'Oswald', sans-serif; font-size:22px; font-weight:600; color:var(--chalk);
+  }
+  .pct-plate.pct-100 .pct-weight{color:var(--mustard);}
+  .pct-plate .pct-bar-track{
+    height:3px; background:var(--line); border-radius:2px; margin-top:8px; overflow:hidden;
+  }
+  .pct-plate .pct-bar-fill{
+    height:100%; background:var(--mustard); border-radius:2px;
+  }
+  .pct-plate.pct-100 .pct-bar-fill{background:var(--rust);}
+
+  /* ===== HISTORY TABLE ===== */
+  .history-card{
+    background:var(--bg-card); border:1px solid var(--line); border-radius:14px;
+    padding:24px;
+  }
+  table{width:100%; border-collapse:collapse;}
+  th{
+    font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:1.5px;
+    text-transform:uppercase; color:var(--chalk-dim); text-align:left;
+    padding:8px 10px; border-bottom:2px solid var(--line);
+  }
+  td{
+    padding:12px 10px; border-bottom:1px solid var(--line); font-size:14px;
+  }
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:rgba(255,255,255,0.02);}
+  .weight-cell{font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--mustard);}
+  .pr-tag{
+    display:inline-block; font-family:'JetBrains Mono', monospace; font-size:10px;
+    background:var(--rust); color:#fff; padding:2px 8px; border-radius:10px; margin-left:8px;
+    letter-spacing:0.5px;
+  }
+  .del-btn{
+    background:transparent; border:none; color:var(--chalk-dim); cursor:pointer;
+    font-size:16px; padding:4px 8px; border-radius:4px;
+  }
+  .del-btn:hover{color:var(--rust); background:rgba(242,85,28,0.08);}
+
+  .loading{text-align:center; padding:60px; color:var(--chalk-dim); font-family:'JetBrains Mono', monospace;}
+
+  /* ===== PR CELEBRATION OVERLAY ===== */
+  #pr-overlay{
+    position:fixed; inset:0; z-index:9999;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(15,15,15,0.82);
+    backdrop-filter:blur(4px);
+    opacity:0; pointer-events:none;
+    transition:opacity 0.25s ease;
+  }
+  #pr-overlay.show{opacity:1; pointer-events:auto;}
+
+  #pr-confetti-canvas{
+    position:absolute; inset:0; width:100%; height:100%;
+  }
+
+  .pr-toast{
+    position:relative; z-index:2;
+    background:linear-gradient(160deg, var(--bg-card) 0%, var(--bg-raised) 100%);
+    border:2px solid var(--flouro);
+    border-radius:18px;
+    padding:40px 48px;
+    text-align:center;
+    max-width:420px;
+    width:90%;
+    box-shadow:0 0 60px rgba(212,242,55,0.35), 0 20px 50px rgba(0,0,0,0.3);
+    transform:scale(0.85) translateY(10px);
+    opacity:0;
+    transition:transform 0.4s cubic-bezier(.34,1.56,.64,1), opacity 0.3s ease;
+  }
+  #pr-overlay.show .pr-toast{
+    transform:scale(1) translateY(0);
+    opacity:1;
+  }
+
+  .pr-toast .pr-eyebrow{
+    font-family:'JetBrains Mono', monospace; font-size:12px; letter-spacing:3px;
+    color:var(--rust); text-transform:uppercase; margin-bottom:10px;
+    display:block;
+    animation:pulse-glow 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse-glow{
+    0%,100%{opacity:1;} 50%{opacity:0.5;}
+  }
+
+  .pr-toast .pr-big-title{
+    font-family:'Oswald', sans-serif; font-size:30px; font-weight:700;
+    text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;
+    color:var(--chalk);
+  }
+  .pr-toast .pr-movement{
+    font-family:'Oswald', sans-serif; font-size:16px; color:var(--chalk-dim);
+    text-transform:uppercase; letter-spacing:1px; margin-bottom:20px;
+  }
+
+  .pr-toast .pr-weight-display{
+    font-family:'Oswald', sans-serif; font-weight:700; color:var(--mustard);
+    font-size:58px; line-height:1;
+    margin-bottom:6px;
+  }
+  .pr-toast .pr-weight-unit{
+    font-family:'JetBrains Mono', monospace; font-size:16px; color:var(--chalk-dim);
+    margin-bottom:18px;
+  }
+
+  .pr-toast .pr-delta{
+    display:inline-block; font-family:'JetBrains Mono', monospace; font-size:13px;
+    background:rgba(92,138,92,0.15); color:var(--green); border:1px solid var(--green);
+    padding:5px 14px; border-radius:20px; margin-bottom:22px;
+  }
+
+  .pr-toast .btn-close-toast{
+    background:var(--rust); color:#fff; border:none; padding:12px 30px;
+    border-radius:8px; cursor:pointer; font-family:'Oswald', sans-serif;
+    font-weight:600; font-size:14px; letter-spacing:1px; text-transform:uppercase;
+    transition:background 0.15s ease;
+  }
+  .pr-toast .btn-close-toast:hover{background:#A8371F;}
+
+  @media (max-width:480px){
+    .pr-toast{padding:32px 26px;}
+    .pr-toast .pr-weight-display{font-size:46px;}
+    .pr-toast .pr-big-title{font-size:24px;}
+  }
+</style>
+<meta name="theme-color" content="#F2551C">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PR Board">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="title-block">
+      <span class="eyebrow">Box Log — Personal Records</span>
+      <h1>PR <span>Board</span></h1>
+      <div class="athlete-name">Wael</div>
+    </div>
+    <div class="unit-toggle" id="unit-toggle">
+      <button data-unit="lb" id="btn-lb">LB</button>
+      <button data-unit="kg" id="btn-kg">KG</button>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <div class="add-panel">
+    <div class="add-panel-header">
+      <div class="bar"></div>
+      <h2>Registrar levantamiento</h2>
+    </div>
+    <div class="form-grid">
+      <div class="field">
+        <label>Movimiento</label>
+        <select id="in-movement"></select>
+      </div>
+      <div class="field">
+        <label>Peso (<span id="unit-label-form">lb</span>)</label>
+        <input type="number" id="in-weight" placeholder="0" min="0" step="0.5">
+      </div>
+      <div class="field">
+        <label>Sets</label>
+        <input type="number" id="in-sets" placeholder="1" min="1" value="1">
+      </div>
+      <div class="field">
+        <label>Reps</label>
+        <input type="number" id="in-reps" placeholder="1" min="1" value="1">
+      </div>
+      <div class="field">
+        <label>Fecha</label>
+        <input type="date" id="in-date">
+      </div>
+      <button class="btn-add" id="btn-save">Guardar</button>
+    </div>
+    <div class="new-movement-row">
+      <input type="text" id="in-new-movement" placeholder="Agregar movimiento nuevo (ej. Snatch)">
+      <button class="btn-ghost" id="btn-add-movement">+ Agregar movimiento</button>
+    </div>
+  </div>
+
+  <div id="tabs-container" class="tabs"></div>
+
+  <div id="content-area">
+    <div class="loading">Cargando registros...</div>
+  </div>
+
+</main>
+
+<div id="pr-overlay">
+  <canvas id="pr-confetti-canvas"></canvas>
+  <div class="pr-toast">
+    <span class="pr-eyebrow">Nuevo récord</span>
+    <div class="pr-big-title">¡Nuevo PR!</div>
+    <div class="pr-movement" id="pr-toast-movement">Movimiento</div>
+    <div class="pr-weight-display" id="pr-toast-weight">0</div>
+    <div class="pr-weight-unit" id="pr-toast-unit">lb</div>
+    <div class="pr-delta" id="pr-toast-delta">+0</div>
+    <div>
+      <button class="btn-close-toast" id="pr-toast-close">Vamos</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIGURACIÓN DE SUPABASE — reemplaza estos dos valores
+   con los de tu proyecto (Settings → API en supabase.com)
+   ============================================================ */
+const SUPABASE_URL = "https://tfoorncktclhuwjgxkhx.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmb29ybmNrdGNsaHV3amd4a2h4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyNTI0OTAsImV4cCI6MjEwMjgyODQ5MH0.k3vOPebTKbWqNSqo18fE834xW5Dgm_Has9m29X-WAf4";
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Fila fija de settings (una sola fila para movimientos + unidad, ya que es un solo usuario)
+const SETTINGS_ROW_ID = 1;
+
+const DEFAULT_MOVEMENTS = [
+  "Snatch", "Clean & Jerk", "Clean", "Jerk", "Back Squat",
+  "Front Squat", "Deadlift", "Overhead Squat", "Strict Press", "Push Press"
+];
+
+const KG_PER_LB = 0.45359237;
+let unit = "lb"; // 'lb' or 'kg'
+let movements = [];
+let records = []; // {id, movement, weightLb, sets, reps, date}
+let activeMovement = null;
+
+function uid(){ return 'r' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+
+function lbToKg(lb){ return lb * KG_PER_LB; }
+function kgToLb(kg){ return kg / KG_PER_LB; }
+
+function toDisplayWeight(weightLb){
+  if(unit === 'kg') return lbToKg(weightLb);
+  return weightLb;
+}
+function fromInputToLb(value){
+  const v = parseFloat(value) || 0;
+  if(unit === 'kg') return kgToLb(v);
+  return v;
+}
+function fmt(n){
+  return (Math.round(n * 10) / 10).toString();
+}
+
+async function loadData(){
+  try{
+    const { data, error } = await supabase
+      .from('pr_records')
+      .select('*')
+      .order('date', { ascending: true });
+    if(error) throw error;
+    records = (data || []).map(r => ({
+      id: r.id,
+      movement: r.movement,
+      weightLb: r.weight_lb,
+      sets: r.sets,
+      reps: r.reps,
+      date: r.date
+    }));
+  }catch(e){
+    console.error('Error cargando registros', e);
+    records = [];
+  }
+
+  try{
+    const { data, error } = await supabase
+      .from('pr_settings')
+      .select('*')
+      .eq('id', SETTINGS_ROW_ID)
+      .maybeSingle();
+    if(error) throw error;
+    if(data){
+      movements = data.movements || [...DEFAULT_MOVEMENTS];
+      unit = data.unit || 'lb';
+    } else {
+      // Primera vez: crear fila de settings
+      movements = [...DEFAULT_MOVEMENTS];
+      unit = 'lb';
+      await supabase.from('pr_settings').insert({
+        id: SETTINGS_ROW_ID, movements: movements, unit: unit
+      });
+    }
+  }catch(e){
+    console.error('Error cargando settings', e);
+    movements = [...DEFAULT_MOVEMENTS];
+    unit = 'lb';
+  }
+
+  if(!activeMovement && movements.length) activeMovement = movements[0];
+}
+
+async function saveRecordToDb(record){
+  try{
+    const { error } = await supabase.from('pr_records').insert({
+      id: record.id,
+      movement: record.movement,
+      weight_lb: record.weightLb,
+      sets: record.sets,
+      reps: record.reps,
+      date: record.date
+    });
+    if(error) throw error;
+  }catch(e){
+    console.error('Error guardando registro', e);
+    alert('No se pudo guardar en la base de datos. Revisa tu conexión.');
+  }
+}
+
+async function deleteRecordFromDb(id){
+  try{
+    const { error } = await supabase.from('pr_records').delete().eq('id', id);
+    if(error) throw error;
+  }catch(e){
+    console.error('Error eliminando registro', e);
+    alert('No se pudo eliminar el registro. Revisa tu conexión.');
+  }
+}
+
+async function saveMovements(){
+  try{
+    const { error } = await supabase
+      .from('pr_settings')
+      .update({ movements: movements })
+      .eq('id', SETTINGS_ROW_ID);
+    if(error) throw error;
+  }catch(e){ console.error('Error guardando movimientos', e); }
+}
+async function saveUnit(){
+  try{
+    const { error } = await supabase
+      .from('pr_settings')
+      .update({ unit: unit })
+      .eq('id', SETTINGS_ROW_ID);
+    if(error) throw error;
+  }catch(e){ console.error('Error guardando unidad', e); }
+}
+
+function populateMovementSelect(){
+  const sel = document.getElementById('in-movement');
+  sel.innerHTML = movements.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+  if(activeMovement) sel.value = activeMovement;
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function renderTabs(){
+  const container = document.getElementById('tabs-container');
+  if(movements.length === 0){
+    container.innerHTML = '';
+    return;
+  }
+  container.innerHTML = movements.map(m => {
+    const has = records.some(r => r.movement === m);
+    return `<button class="tab ${m===activeMovement?'active':''}" data-movement="${escapeHtml(m)}">${escapeHtml(m)}${has?'':''}</button>`;
+  }).join('');
+
+  container.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeMovement = btn.dataset.movement;
+      document.getElementById('in-movement').value = activeMovement;
+      renderTabs();
+      renderContent();
+    });
+  });
+}
+
+function getRecordsForMovement(mv){
+  return records
+    .filter(r => r.movement === mv)
+    .sort((a,b) => new Date(a.date) - new Date(b.date));
+}
+
+function getPR(mv){
+  const recs = getRecordsForMovement(mv);
+  if(!recs.length) return null;
+  return recs.reduce((max, r) => r.weightLb > max.weightLb ? r : max, recs[0]);
+}
+
+function renderContent(){
+  const area = document.getElementById('content-area');
+  if(!activeMovement || movements.length === 0){
+    area.innerHTML = `<div class="empty-state">
+      <div class="big">Sin movimientos aún</div>
+      <div>Agrega un movimiento arriba para empezar a registrar tus PRs.</div>
+    </div>`;
+    return;
+  }
+
+  const recs = getRecordsForMovement(activeMovement);
+  const pr = getPR(activeMovement);
+
+  let html = '';
+
+  // HERO
+  if(pr){
+    const displayW = toDisplayWeight(pr.weightLb);
+    html += `
+    <div class="pr-hero">
+      <div class="pr-hero-top">
+        <div class="pr-movement-name">${escapeHtml(activeMovement)}</div>
+        <div class="pr-date-badge">${formatDate(pr.date)}</div>
+      </div>
+      <div class="pr-value-row">
+        <span class="pr-value">${fmt(displayW)}</span>
+        <span class="pr-unit">${unit.toUpperCase()}</span>
+      </div>
+      <div class="pr-meta">
+        <span>${pr.sets} set${pr.sets>1?'s':''}</span>
+        <span>×</span>
+        <span>${pr.reps} rep${pr.reps>1?'s':''}</span>
+        <span class="mono">· PR actual</span>
+      </div>
+    </div>`;
+  } else {
+    html += `<div class="empty-state">
+      <div class="big">Sin registros de ${escapeHtml(activeMovement)}</div>
+      <div>Agrega tu primer levantamiento arriba.</div>
+    </div>`;
+    area.innerHTML = html;
+    return;
+  }
+
+  // CHART
+  html += `<div class="chart-card">
+    <div class="card-title">Progreso histórico</div>
+    <div id="chart-container"></div>
+  </div>`;
+
+  // PERCENTAGE TABLE
+  html += `<div class="pct-card">
+    <div class="card-title">Tabla de porcentajes — ${fmt(toDisplayWeight(pr.weightLb))} ${unit.toUpperCase()} = 100%</div>
+    <div class="pct-grid">`;
+  for(let p = 100; p >= 5; p -= 5){
+    const w = toDisplayWeight(pr.weightLb) * (p/100);
+    html += `<div class="pct-plate ${p===100?'pct-100':''}">
+      <div class="pct-label">${p}%</div>
+      <div class="pct-weight">${fmt(w)}</div>
+      <div class="pct-bar-track"><div class="pct-bar-fill" style="width:${p}%"></div></div>
+    </div>`;
+  }
+  html += `</div></div>`;
+
+  // HISTORY TABLE
+  html += `<div class="history-card">
+    <div class="card-title">Historial completo</div>
+    <table>
+      <thead>
+        <tr><th>Fecha</th><th>Peso</th><th>Sets</th><th>Reps</th><th></th></tr>
+      </thead>
+      <tbody>`;
+  const recsDesc = [...recs].reverse();
+  recsDesc.forEach(r => {
+    const isPR = pr && r.id === pr.id;
+    html += `<tr>
+      <td>${formatDate(r.date)}</td>
+      <td class="weight-cell">${fmt(toDisplayWeight(r.weightLb))} ${unit}${isPR?'<span class="pr-tag">PR</span>':''}</td>
+      <td>${r.sets}</td>
+      <td>${r.reps}</td>
+      <td><button class="del-btn" data-id="${r.id}" title="Eliminar">✕</button></td>
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+
+  area.innerHTML = html;
+
+  // render chart via SVG
+  renderChart(recs);
+
+  // bind delete buttons
+  area.querySelectorAll('.del-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idToDelete = btn.dataset.id;
+      records = records.filter(r => r.id !== idToDelete);
+      renderTabs();
+      renderContent();
+      await deleteRecordFromDb(idToDelete);
+    });
+  });
+}
+
+function formatDate(dateStr){
+  const d = new Date(dateStr + 'T00:00:00');
+  const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function renderChart(recs){
+  const container = document.getElementById('chart-container');
+  if(recs.length < 2){
+    container.innerHTML = `<div class="chart-empty">Agrega al menos 2 registros para ver la gráfica de progreso.</div>`;
+    return;
+  }
+
+  const W = 900, H = 280, padL = 55, padR = 20, padT = 20, padB = 40;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+
+  const weights = recs.map(r => toDisplayWeight(r.weightLb));
+  const minW = Math.min(...weights) * 0.95;
+  const maxW = Math.max(...weights) * 1.05;
+  const range = maxW - minW || 1;
+
+  const dates = recs.map(r => new Date(r.date).getTime());
+  const minD = Math.min(...dates);
+  const maxD = Math.max(...dates);
+  const dRange = (maxD - minD) || 1;
+
+  function x(i){
+    if(recs.length === 1) return padL + plotW/2;
+    return padL + ((dates[i]-minD)/dRange) * plotW;
+  }
+  function y(w){
+    return padT + plotH - ((w-minW)/range) * plotH;
+  }
+
+  const points = recs.map((r,i) => [x(i), y(weights[i])]);
+  const pathD = points.map((p,i) => (i===0?'M':'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+
+  // area fill path
+  const areaD = pathD + ` L${points[points.length-1][0].toFixed(1)},${(padT+plotH).toFixed(1)} L${points[0][0].toFixed(1)},${(padT+plotH).toFixed(1)} Z`;
+
+  // gridlines (4 horizontal)
+  let gridLines = '';
+  let gridLabels = '';
+  const steps = 4;
+  for(let i=0; i<=steps; i++){
+    const val = minW + (range * i/steps);
+    const yy = y(val);
+    gridLines += `<line x1="${padL}" y1="${yy.toFixed(1)}" x2="${W-padR}" y2="${yy.toFixed(1)}" stroke="#2C2C2C" stroke-width="1"/>`;
+    gridLabels += `<text x="${padL-10}" y="${(yy+4).toFixed(1)}" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="11" fill="#75726A">${fmt(val)}</text>`;
+  }
+
+  // x labels: first, mid, last date
+  let xLabels = '';
+  const labelIdxs = recs.length <= 5 ? recs.map((_,i)=>i) : [0, Math.floor((recs.length-1)/2), recs.length-1];
+  labelIdxs.forEach(i => {
+    xLabels += `<text x="${x(i).toFixed(1)}" y="${H-12}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#75726A">${formatDate(recs[i].date)}</text>`;
+  });
+
+  // points + PR highlight
+  const maxWeightVal = Math.max(...weights);
+  let dots = '';
+  points.forEach((p, i) => {
+    const isMax = weights[i] === maxWeightVal;
+    dots += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${isMax?6:4}" fill="${isMax?'#D4F237':'#F2551C'}" stroke="#1E1D1B" stroke-width="2"/>`;
+  });
+
+  const svg = `
+  <svg id="chart-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#F2551C" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="#F2551C" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    ${gridLines}
+    <path d="${areaD}" fill="url(#areaGrad)"/>
+    <path d="${pathD}" fill="none" stroke="#F2551C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    ${dots}
+    ${gridLabels}
+    ${xLabels}
+  </svg>`;
+
+  container.innerHTML = svg;
+}
+
+/* ===== PR CELEBRATION ===== */
+let confettiRAF = null;
+
+function fireConfetti(){
+  const canvas = document.getElementById('pr-confetti-canvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = canvas.offsetWidth * dpr;
+  canvas.height = canvas.offsetHeight * dpr;
+  ctx.scale(dpr, dpr);
+
+  const colors = ['#F2551C', '#D4F237', '#3FA34D', '#1E1D1B'];
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  const pieces = [];
+  const count = 140;
+
+  for(let i=0; i<count; i++){
+    pieces.push({
+      x: Math.random() * W,
+      y: -20 - Math.random() * H * 0.5,
+      w: 6 + Math.random() * 6,
+      h: 8 + Math.random() * 10,
+      color: colors[Math.floor(Math.random()*colors.length)],
+      rot: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random()-0.5) * 0.3,
+      vy: 2 + Math.random() * 3,
+      vx: (Math.random()-0.5) * 2,
+      drift: Math.random() * Math.PI * 2
+    });
+  }
+
+  const startTime = performance.now();
+  const duration = 3200;
+
+  function frame(now){
+    const elapsed = now - startTime;
+    ctx.clearRect(0,0,W,H);
+
+    let anyVisible = false;
+    pieces.forEach(p => {
+      p.y += p.vy;
+      p.x += p.vx + Math.sin((elapsed/300)+p.drift) * 0.6;
+      p.rot += p.rotSpeed;
+      if(p.y < H + 20) anyVisible = true;
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.restore();
+    });
+
+    if(elapsed < duration && anyVisible){
+      confettiRAF = requestAnimationFrame(frame);
+    } else {
+      ctx.clearRect(0,0,W,H);
+    }
+  }
+
+  if(confettiRAF) cancelAnimationFrame(confettiRAF);
+  confettiRAF = requestAnimationFrame(frame);
+}
+
+function showPRCelebration(movement, weightLbNew, weightLbPrev){
+  const displayNew = toDisplayWeight(weightLbNew);
+  const displayPrev = weightLbPrev !== null ? toDisplayWeight(weightLbPrev) : null;
+
+  document.getElementById('pr-toast-movement').textContent = movement;
+  document.getElementById('pr-toast-weight').textContent = fmt(displayNew);
+  document.getElementById('pr-toast-unit').textContent = unit;
+
+  const deltaEl = document.getElementById('pr-toast-delta');
+  if(displayPrev !== null){
+    const delta = displayNew - displayPrev;
+    deltaEl.textContent = `+${fmt(delta)} ${unit} sobre tu marca anterior`;
+    deltaEl.style.display = 'inline-block';
+  } else {
+    deltaEl.textContent = 'Tu primer registro en este movimiento';
+    deltaEl.style.display = 'inline-block';
+  }
+
+  const overlay = document.getElementById('pr-overlay');
+  overlay.classList.add('show');
+  fireConfetti();
+}
+
+function hidePRCelebration(){
+  const overlay = document.getElementById('pr-overlay');
+  overlay.classList.remove('show');
+  if(confettiRAF){ cancelAnimationFrame(confettiRAF); confettiRAF = null; }
+}
+
+function updateUnitButtons(){
+  document.getElementById('btn-lb').classList.toggle('active', unit==='lb');
+  document.getElementById('btn-kg').classList.toggle('active', unit==='kg');
+  document.getElementById('unit-label-form').textContent = unit;
+}
+
+async function init(){
+  await loadData();
+  populateMovementSelect();
+  updateUnitButtons();
+  renderTabs();
+  renderContent();
+
+  document.getElementById('in-date').valueAsDate = new Date();
+
+  document.getElementById('btn-lb').addEventListener('click', async () => {
+    if(unit !== 'lb'){ unit = 'lb'; await saveUnit(); updateUnitButtons(); renderContent(); }
+  });
+  document.getElementById('btn-kg').addEventListener('click', async () => {
+    if(unit !== 'kg'){ unit = 'kg'; await saveUnit(); updateUnitButtons(); renderContent(); }
+  });
+
+  document.getElementById('in-movement').addEventListener('change', (e) => {
+    activeMovement = e.target.value;
+    renderTabs();
+    renderContent();
+  });
+
+  document.getElementById('btn-add-movement').addEventListener('click', async () => {
+    const input = document.getElementById('in-new-movement');
+    const name = input.value.trim();
+    if(!name) return;
+    if(movements.some(m => m.toLowerCase() === name.toLowerCase())){
+      alert('Ese movimiento ya existe.');
+      return;
+    }
+    movements.push(name);
+    await saveMovements();
+    activeMovement = name;
+    input.value = '';
+    populateMovementSelect();
+    renderTabs();
+    renderContent();
+  });
+
+  document.getElementById('btn-save').addEventListener('click', async () => {
+    const mv = document.getElementById('in-movement').value;
+    const weightRaw = document.getElementById('in-weight').value;
+    const sets = parseInt(document.getElementById('in-sets').value) || 1;
+    const reps = parseInt(document.getElementById('in-reps').value) || 1;
+    const date = document.getElementById('in-date').value;
+
+    if(!mv){ alert('Selecciona un movimiento.'); return; }
+    if(!weightRaw || parseFloat(weightRaw) <= 0){ alert('Ingresa un peso válido.'); return; }
+    if(!date){ alert('Selecciona una fecha.'); return; }
+
+    const weightLb = fromInputToLb(weightRaw);
+
+    // Determine previous PR for this movement BEFORE inserting the new record
+    const prevPR = getPR(mv);
+    const prevPRWeightLb = prevPR ? prevPR.weightLb : null;
+
+    const newRecord = {
+      id: uid(),
+      movement: mv,
+      weightLb: weightLb,
+      sets: sets,
+      reps: reps,
+      date: date
+    };
+
+    records.push(newRecord);
+
+    document.getElementById('in-weight').value = '';
+    document.getElementById('in-sets').value = '1';
+    document.getElementById('in-reps').value = '1';
+
+    activeMovement = mv;
+    renderTabs();
+    renderContent();
+
+    await saveRecordToDb(newRecord);
+
+    // Celebrate if this is a brand new PR (first record, or beats previous best)
+    const isNewPR = prevPRWeightLb === null || weightLb > prevPRWeightLb;
+    if(isNewPR){
+      showPRCelebration(mv, weightLb, prevPRWeightLb);
+    }
+  });
+
+  document.getElementById('pr-toast-close').addEventListener('click', hidePRCelebration);
+  document.getElementById('pr-overlay').addEventListener('click', (e) => {
+    if(e.target.id === 'pr-overlay') hidePRCelebration();
+  });
+}
+
+init();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(e => console.log('SW error', e));
+  });
+}
+</script>
+
+</body>
+</html>
