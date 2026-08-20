@@ -376,6 +376,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="PR Board">
@@ -464,7 +465,7 @@
 const SUPABASE_URL = "https://tfoorncktclhuwjgxkhx.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmb29ybmNrdGNsaHV3amd4a2h4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyNTI0OTAsImV4cCI6MjEwMjgyODQ5MH0.k3vOPebTKbWqNSqo18fE834xW5Dgm_Has9m29X-WAf4";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Fila fija de settings (una sola fila para movimientos + unidad, ya que es un solo usuario)
 const SETTINGS_ROW_ID = 1;
@@ -500,7 +501,7 @@ function fmt(n){
 
 async function loadData(){
   try{
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('pr_records')
       .select('*')
       .order('date', { ascending: true });
@@ -519,7 +520,7 @@ async function loadData(){
   }
 
   try{
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('pr_settings')
       .select('*')
       .eq('id', SETTINGS_ROW_ID)
@@ -532,7 +533,7 @@ async function loadData(){
       // Primera vez: crear fila de settings
       movements = [...DEFAULT_MOVEMENTS];
       unit = 'lb';
-      await supabase.from('pr_settings').insert({
+      await db.from('pr_settings').insert({
         id: SETTINGS_ROW_ID, movements: movements, unit: unit
       });
     }
@@ -547,7 +548,7 @@ async function loadData(){
 
 async function saveRecordToDb(record){
   try{
-    const { error } = await supabase.from('pr_records').insert({
+    const { error } = await db.from('pr_records').insert({
       id: record.id,
       movement: record.movement,
       weight_lb: record.weightLb,
@@ -564,7 +565,7 @@ async function saveRecordToDb(record){
 
 async function deleteRecordFromDb(id){
   try{
-    const { error } = await supabase.from('pr_records').delete().eq('id', id);
+    const { error } = await db.from('pr_records').delete().eq('id', id);
     if(error) throw error;
   }catch(e){
     console.error('Error eliminando registro', e);
@@ -574,7 +575,7 @@ async function deleteRecordFromDb(id){
 
 async function saveMovements(){
   try{
-    const { error } = await supabase
+    const { error } = await db
       .from('pr_settings')
       .update({ movements: movements })
       .eq('id', SETTINGS_ROW_ID);
@@ -583,7 +584,7 @@ async function saveMovements(){
 }
 async function saveUnit(){
   try{
-    const { error } = await supabase
+    const { error } = await db
       .from('pr_settings')
       .update({ unit: unit })
       .eq('id', SETTINGS_ROW_ID);
