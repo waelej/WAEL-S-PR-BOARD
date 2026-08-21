@@ -607,9 +607,13 @@ async function saveUnit(){
   }catch(e){ console.error('Error guardando unidad', e); }
 }
 
+function sortedMovements(){
+  return [...movements].sort((a,b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+}
+
 function populateMovementSelect(){
   const sel = document.getElementById('in-movement');
-  sel.innerHTML = movements.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+  sel.innerHTML = sortedMovements().map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
   if(activeMovement) sel.value = activeMovement;
 }
 
@@ -625,7 +629,7 @@ function renderTabs(){
     container.innerHTML = '';
     return;
   }
-  container.innerHTML = movements.map(m => {
+  container.innerHTML = sortedMovements().map(m => {
     const has = records.some(r => r.movement === m);
     return `<button class="tab ${m===activeMovement?'active':''}" data-movement="${escapeHtml(m)}">${escapeHtml(m)}${has?'':''}</button>`;
   }).join('');
@@ -649,6 +653,12 @@ function getRecordsForMovement(mv){
 
 function getPR(mv){
   const recs = getRecordsForMovement(mv);
+  if(!recs.length) return null;
+  return recs.reduce((max, r) => r.weightLb > max.weightLb ? r : max, recs[0]);
+}
+
+function getPRByReps(mv, reps){
+  const recs = getRecordsForMovement(mv).filter(r => r.reps === reps);
   if(!recs.length) return null;
   return recs.reduce((max, r) => r.weightLb > max.weightLb ? r : max, recs[0]);
 }
@@ -924,21 +934,21 @@ function fireConfetti(){
   confettiRAF = requestAnimationFrame(frame);
 }
 
-function showPRCelebration(movement, weightLbNew, weightLbPrev){
+function showPRCelebration(movement, weightLbNew, weightLbPrev, reps){
   const displayNew = toDisplayWeight(weightLbNew);
   const displayPrev = weightLbPrev !== null ? toDisplayWeight(weightLbPrev) : null;
 
-  document.getElementById('pr-toast-movement').textContent = movement;
+  document.getElementById('pr-toast-movement').textContent = `${movement} — ${reps} rep${reps>1?'s':''}`;
   document.getElementById('pr-toast-weight').textContent = fmt(displayNew);
   document.getElementById('pr-toast-unit').textContent = unit;
 
   const deltaEl = document.getElementById('pr-toast-delta');
   if(displayPrev !== null){
     const delta = displayNew - displayPrev;
-    deltaEl.textContent = `+${fmt(delta)} ${unit} sobre tu marca anterior`;
+    deltaEl.textContent = `+${fmt(delta)} ${unit} sobre tu marca anterior a ${reps} rep${reps>1?'s':''}`;
     deltaEl.style.display = 'inline-block';
   } else {
-    deltaEl.textContent = 'Tu primer registro en este movimiento';
+    deltaEl.textContent = `Tu primer registro a ${reps} rep${reps>1?'s':''} en este movimiento`;
     deltaEl.style.display = 'inline-block';
   }
 
@@ -1013,8 +1023,8 @@ async function init(){
 
     const weightLb = fromInputToLb(weightRaw);
 
-    // Determine previous PR for this movement BEFORE inserting the new record
-    const prevPR = getPR(mv);
+    // Determine previous PR for this movement+reps BEFORE inserting the new record
+    const prevPR = getPRByReps(mv, reps);
     const prevPRWeightLb = prevPR ? prevPR.weightLb : null;
 
     const newRecord = {
@@ -1038,10 +1048,10 @@ async function init(){
 
     await saveRecordToDb(newRecord);
 
-    // Celebrate if this is a brand new PR (first record, or beats previous best)
+    // Celebrate if this beats the previous best for this same rep count
     const isNewPR = prevPRWeightLb === null || weightLb > prevPRWeightLb;
     if(isNewPR){
-      showPRCelebration(mv, weightLb, prevPRWeightLb);
+      showPRCelebration(mv, weightLb, prevPRWeightLb, reps);
     }
   });
 
