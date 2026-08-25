@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pr-board-v1';
+const CACHE_NAME = 'pr-board-v2';
 const ASSETS = [
   './index.html',
   './manifest.json',
@@ -23,13 +23,19 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Network-first for Supabase API calls, cache-first for static assets
+  // Never cache Supabase API calls — always go straight to network
   if(event.request.url.includes('supabase.co')){
-    return; // let it go straight to network
+    return;
   }
+
+  // Network-first: try to get the freshest version, fall back to cache only if offline
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request);
-    })
+    fetch(event.request)
+      .then((response) => {
+        const responseClone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
