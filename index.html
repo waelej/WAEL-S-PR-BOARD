@@ -212,6 +212,91 @@
     display:flex; gap:16px; flex-wrap:wrap;
   }
 
+  /* ===== HERO ROW (PR real + 1RM teórico lado a lado) ===== */
+  .hero-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+    margin-bottom:20px;
+  }
+  @media (max-width:760px){
+    .hero-row{grid-template-columns:1fr;}
+  }
+  .hero-row .pr-hero{margin-bottom:0;}
+
+  /* ===== 1RM TEÓRICO CARD ===== */
+  .rm-calc-card{
+    background:var(--bg-card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:28px;
+    position:relative;
+    overflow:hidden;
+  }
+  .rm-calc-card::before{
+    content:'';
+    position:absolute; top:-40px; left:-40px;
+    width:180px; height:180px; border-radius:50%;
+    background:radial-gradient(circle, rgba(212,242,55,0.25), transparent 70%);
+  }
+  .rm-calc-header{
+    display:flex; justify-content:space-between; align-items:flex-start;
+    margin-bottom:16px; position:relative; z-index:1;
+  }
+  .rm-calc-title{
+    font-family:'Oswald', sans-serif; font-size:22px; font-weight:600;
+    text-transform:uppercase; letter-spacing:0.5px;
+  }
+  .rm-calc-badge{
+    font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:1px;
+    color:var(--chalk-dim); background:var(--bg); padding:4px 10px;
+    border-radius:20px; border:1px solid var(--line); text-transform:uppercase;
+  }
+  .rm-calc-inputs{
+    display:grid; grid-template-columns:1fr 1fr; gap:10px;
+    margin-bottom:18px; position:relative; z-index:1;
+  }
+  .rm-calc-inputs .field label{
+    display:block; font-family:'JetBrains Mono', monospace;
+    font-size:10px; letter-spacing:1.5px; text-transform:uppercase;
+    color:var(--chalk-dim); margin-bottom:6px;
+  }
+  .rm-calc-inputs .field input{
+    width:100%; background:var(--bg); border:1px solid var(--line);
+    color:var(--chalk); padding:10px 12px; border-radius:6px;
+    font-family:'Inter', sans-serif; font-size:14px;
+  }
+  .rm-calc-inputs .field input:focus{outline:none; border-color:var(--rust);}
+
+  .rm-results{
+    display:flex; flex-direction:column; gap:8px; position:relative; z-index:1;
+  }
+  .rm-result-row{
+    display:flex; justify-content:space-between; align-items:baseline;
+    padding:10px 14px; background:var(--bg); border-radius:8px; border:1px solid var(--line);
+  }
+  .rm-result-formula{
+    font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--chalk-dim);
+    letter-spacing:0.5px;
+  }
+  .rm-result-value{
+    font-family:'Oswald', sans-serif; font-size:22px; font-weight:600; color:var(--chalk);
+  }
+  .rm-result-row.rm-avg{
+    border-color:var(--rust); background:linear-gradient(90deg, rgba(242,85,28,0.06), transparent);
+  }
+  .rm-result-row.rm-avg .rm-result-formula{color:var(--rust); font-weight:700;}
+  .rm-result-row.rm-avg .rm-result-value{color:var(--rust); font-size:26px;}
+
+  .rm-calc-empty{
+    color:var(--chalk-dim); font-size:13px; text-align:center; padding:30px 0;
+    position:relative; z-index:1;
+  }
+  .rm-calc-note{
+    font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--chalk-dim);
+    margin-top:14px; line-height:1.5; position:relative; z-index:1;
+  }
+
   /* ===== CHART ===== */
   .chart-card{
     background:var(--bg-card); border:1px solid var(--line); border-radius:14px;
@@ -663,6 +748,68 @@ function getPRByReps(mv, reps){
   return recs.reduce((max, r) => r.weightLb > max.weightLb ? r : max, recs[0]);
 }
 
+/* ===== CALCULADORA DE 1RM TEÓRICO (fórmula de Epley) =====
+   Es puramente informativa: no lee ni escribe en `records`, no toca
+   el PR real ni la base de datos. Solo transforma lo que el usuario
+   escribe en estos dos inputs, en el momento.
+   Epley es la fórmula más usada y validada para estimar 1RM a partir
+   de series submáximas. */
+function calcEpley(weight, reps){
+  if(reps <= 1) return weight;
+  return weight * (1 + reps/30);
+}
+
+function renderRMCalcCard(){
+  return `
+    <div class="rm-calc-card">
+      <div class="rm-calc-header">
+        <div class="rm-calc-title">1RM Teórico</div>
+        <div class="rm-calc-badge">Estimado</div>
+      </div>
+      <div class="rm-calc-inputs">
+        <div class="field">
+          <label>Peso levantado (${unit})</label>
+          <input type="number" id="rm-calc-weight" placeholder="0" min="0" step="0.5">
+        </div>
+        <div class="field">
+          <label>Reps logradas</label>
+          <input type="number" id="rm-calc-reps" placeholder="0" min="1" step="1">
+        </div>
+      </div>
+      <div id="rm-calc-results">
+        <div class="rm-calc-empty">Ingresa un peso y las repeticiones de una serie submáxima para estimar tu 1RM.</div>
+      </div>
+      <div class="rm-calc-note">Estimación matemática (fórmula de Epley), no un registro real. No modifica tu PR ni tu historial.</div>
+    </div>`;
+}
+
+function updateRMCalc(){
+  const resultsEl = document.getElementById('rm-calc-results');
+  if(!resultsEl) return;
+
+  const weightInput = parseFloat(document.getElementById('rm-calc-weight').value);
+  const repsInput = parseInt(document.getElementById('rm-calc-reps').value);
+
+  if(!weightInput || weightInput <= 0 || !repsInput || repsInput < 1){
+    resultsEl.innerHTML = `<div class="rm-calc-empty">Ingresa un peso y las repeticiones de una serie submáxima para estimar tu 1RM.</div>`;
+    return;
+  }
+
+  if(repsInput === 1){
+    resultsEl.innerHTML = `<div class="rm-calc-empty">Con 1 repetición, el peso ingresado ya ES tu 1RM — no hace falta estimarlo.</div>`;
+    return;
+  }
+
+  const epley = calcEpley(weightInput, repsInput);
+
+  let html = '';
+  html += `<div class="rm-results">`;
+  html += `<div class="rm-result-row rm-avg"><span class="rm-result-formula">1RM estimado (Epley)</span><span class="rm-result-value">${fmt(epley)} ${unit}</span></div>`;
+  html += `</div>`;
+
+  resultsEl.innerHTML = html;
+}
+
 function renderContent(){
   const area = document.getElementById('content-area');
   if(!activeMovement || movements.length === 0){
@@ -678,9 +825,10 @@ function renderContent(){
 
   let html = '';
 
-  // HERO
+  // HERO ROW: PR real + 1RM teórico lado a lado
   if(pr){
     const displayW = toDisplayWeight(pr.weightLb);
+    html += `<div class="hero-row">`;
     html += `
     <div class="pr-hero">
       <div class="pr-hero-top">
@@ -698,6 +846,10 @@ function renderContent(){
         <span class="mono">· PR actual</span>
       </div>
     </div>`;
+
+    html += renderRMCalcCard();
+
+    html += `</div>`;
   } else {
     html += `<div class="empty-state">
       <div class="big">Sin registros de ${escapeHtml(activeMovement)}</div>
@@ -782,6 +934,14 @@ function renderContent(){
       await deleteRecordFromDb(idToDelete);
     });
   });
+
+  // bind 1RM calculator inputs (live update, no data is saved)
+  const rmWeightInput = document.getElementById('rm-calc-weight');
+  const rmRepsInput = document.getElementById('rm-calc-reps');
+  if(rmWeightInput && rmRepsInput){
+    rmWeightInput.addEventListener('input', updateRMCalc);
+    rmRepsInput.addEventListener('input', updateRMCalc);
+  }
 }
 
 function formatDate(dateStr){
