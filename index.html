@@ -252,21 +252,6 @@
     color:var(--chalk-dim); background:var(--bg); padding:4px 10px;
     border-radius:20px; border:1px solid var(--line); text-transform:uppercase;
   }
-  .rm-calc-inputs{
-    display:grid; grid-template-columns:1fr 1fr; gap:10px;
-    margin-bottom:18px; position:relative; z-index:1;
-  }
-  .rm-calc-inputs .field label{
-    display:block; font-family:'JetBrains Mono', monospace;
-    font-size:10px; letter-spacing:1.5px; text-transform:uppercase;
-    color:var(--chalk-dim); margin-bottom:6px;
-  }
-  .rm-calc-inputs .field input{
-    width:100%; background:var(--bg); border:1px solid var(--line);
-    color:var(--chalk); padding:10px 12px; border-radius:6px;
-    font-family:'Inter', sans-serif; font-size:14px;
-  }
-  .rm-calc-inputs .field input:focus{outline:none; border-color:var(--rust);}
 
   .rm-results{
     display:flex; flex-direction:column; gap:8px; position:relative; z-index:1;
@@ -748,66 +733,70 @@ function getPRByReps(mv, reps){
   return recs.reduce((max, r) => r.weightLb > max.weightLb ? r : max, recs[0]);
 }
 
-/* ===== CALCULADORA DE 1RM TEÓRICO (fórmula de Epley) =====
-   Es puramente informativa: no lee ni escribe en `records`, no toca
-   el PR real ni la base de datos. Solo transforma lo que el usuario
-   escribe en estos dos inputs, en el momento.
-   Epley es la fórmula más usada y validada para estimar 1RM a partir
-   de series submáximas. */
+/* ===== 1RM TEÓRICO AUTOMÁTICO (fórmula de Epley) =====
+   Es puramente informativo: NO escribe en `records` ni en la base
+   de datos, ni modifica el PR real. Solo lee el historial del
+   movimiento activo, aplica Epley a cada serie, y muestra la que
+   proyecta el 1RM más alto. Se recalcula solo cada vez que se
+   renderiza (por ejemplo, al agregar un registro nuevo). */
 function calcEpley(weight, reps){
   if(reps <= 1) return weight;
   return weight * (1 + reps/30);
 }
 
-function renderRMCalcCard(){
+function getBestEstimatedRM(recs){
+  if(!recs.length) return null;
+  let best = null;
+  let bestEstimate = -Infinity;
+  recs.forEach(r => {
+    const estimate = calcEpley(r.weightLb, r.reps);
+    if(estimate > bestEstimate){
+      bestEstimate = estimate;
+      best = r;
+    }
+  });
+  return { record: best, estimateLb: bestEstimate };
+}
+
+function renderRMCalcCard(recs){
+  const best = getBestEstimatedRM(recs);
+
+  if(!best){
+    return `
+    <div class="rm-calc-card">
+      <div class="rm-calc-header">
+        <div class="rm-calc-title">1RM Teórico</div>
+        <div class="rm-calc-badge">Estimado</div>
+      </div>
+      <div class="rm-calc-empty">Aún no hay suficientes datos para estimarlo.</div>
+    </div>`;
+  }
+
+  const { record, estimateLb } = best;
+  const displayEstimate = toDisplayWeight(estimateLb);
+  const displaySourceWeight = toDisplayWeight(record.weightLb);
+  const isDirectPR = record.reps === 1;
+
   return `
     <div class="rm-calc-card">
       <div class="rm-calc-header">
         <div class="rm-calc-title">1RM Teórico</div>
         <div class="rm-calc-badge">Estimado</div>
       </div>
-      <div class="rm-calc-inputs">
-        <div class="field">
-          <label>Peso levantado (${unit})</label>
-          <input type="number" id="rm-calc-weight" placeholder="0" min="0" step="0.5">
-        </div>
-        <div class="field">
-          <label>Reps logradas</label>
-          <input type="number" id="rm-calc-reps" placeholder="0" min="1" step="1">
+      <div class="rm-results">
+        <div class="rm-result-row rm-avg">
+          <span class="rm-result-formula">1RM estimado (Epley)</span>
+          <span class="rm-result-value">${fmt(displayEstimate)} ${unit}</span>
         </div>
       </div>
-      <div id="rm-calc-results">
-        <div class="rm-calc-empty">Ingresa un peso y las repeticiones de una serie submáxima para estimar tu 1RM.</div>
+      <div class="rm-calc-note">
+        ${isDirectPR
+          ? `Basado en tu serie real de 1 rep (${fmt(displaySourceWeight)} ${unit}) — es tu PR real.`
+          : `Basado en tu mejor serie proyectada: ${fmt(displaySourceWeight)} ${unit} × ${record.reps} reps (${formatDate(record.date)}).`
+        }
+        <br>Estimación matemática, no un registro real. No modifica tu PR ni tu historial. Se actualiza sola con cada nuevo registro.
       </div>
-      <div class="rm-calc-note">Estimación matemática (fórmula de Epley), no un registro real. No modifica tu PR ni tu historial.</div>
     </div>`;
-}
-
-function updateRMCalc(){
-  const resultsEl = document.getElementById('rm-calc-results');
-  if(!resultsEl) return;
-
-  const weightInput = parseFloat(document.getElementById('rm-calc-weight').value);
-  const repsInput = parseInt(document.getElementById('rm-calc-reps').value);
-
-  if(!weightInput || weightInput <= 0 || !repsInput || repsInput < 1){
-    resultsEl.innerHTML = `<div class="rm-calc-empty">Ingresa un peso y las repeticiones de una serie submáxima para estimar tu 1RM.</div>`;
-    return;
-  }
-
-  if(repsInput === 1){
-    resultsEl.innerHTML = `<div class="rm-calc-empty">Con 1 repetición, el peso ingresado ya ES tu 1RM — no hace falta estimarlo.</div>`;
-    return;
-  }
-
-  const epley = calcEpley(weightInput, repsInput);
-
-  let html = '';
-  html += `<div class="rm-results">`;
-  html += `<div class="rm-result-row rm-avg"><span class="rm-result-formula">1RM estimado (Epley)</span><span class="rm-result-value">${fmt(epley)} ${unit}</span></div>`;
-  html += `</div>`;
-
-  resultsEl.innerHTML = html;
 }
 
 function renderContent(){
@@ -847,7 +836,7 @@ function renderContent(){
       </div>
     </div>`;
 
-    html += renderRMCalcCard();
+    html += renderRMCalcCard(recs);
 
     html += `</div>`;
   } else {
@@ -934,14 +923,6 @@ function renderContent(){
       await deleteRecordFromDb(idToDelete);
     });
   });
-
-  // bind 1RM calculator inputs (live update, no data is saved)
-  const rmWeightInput = document.getElementById('rm-calc-weight');
-  const rmRepsInput = document.getElementById('rm-calc-reps');
-  if(rmWeightInput && rmRepsInput){
-    rmWeightInput.addEventListener('input', updateRMCalc);
-    rmRepsInput.addEventListener('input', updateRMCalc);
-  }
 }
 
 function formatDate(dateStr){
